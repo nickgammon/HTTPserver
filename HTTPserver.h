@@ -3,7 +3,7 @@ class HTTPserver : public Print
   {
   // derived classes can know these lengths
   protected:
-  static const size_t MAX_KEY_LENGTH = 40;  // maximum size for a key
+  static const size_t MAX_KEY_LENGTH = 40;     // maximum size for a key
   static const size_t MAX_VALUE_LENGTH = 100;  // maximum size for a value
 
   private:
@@ -110,7 +110,7 @@ class HTTPserver : public Print
     // for outputting back to client
   	size_t write(uint8_t c);
 
-    public:
+  public:
     // fix up <, >, & into &lt; &gt; and &amp;
     void fixHTML (const char * message);
     // fix up non alphanumeric into %-encoding

@@ -5,7 +5,6 @@
 #include <SPI.h>
 #include <Ethernet.h>
 #include <HTTPserver.h>
-#include <memdebug.h>
 
 const int LOW_PIN = 3;
 const int HIGH_PIN = 5;
@@ -28,12 +27,9 @@ EthernetServer server(80);
 // derive an instance of the HTTPserver class with custom handlers
 class myServerClass : public HTTPserver
   {
-  public:
-
   virtual void processPostType        (const char * key, const byte flags);
   virtual void processGetArgument     (const char * key, const char * value, const byte flags);
-
-  };  // end of myServClass
+  };  // end of myServerClass
 
 myServerClass myServer;
 
@@ -97,7 +93,6 @@ void setup ()
   {
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip, gateway, subnet);
-  server.begin();
 
   for (int i = LOW_PIN; i <= HIGH_PIN; i++)
     pinMode (i, OUTPUT);
@@ -113,8 +108,6 @@ void loop ()
     return;
     }
 
-  unsigned long startTime = millis ();
-
   myServer.begin (&client);
   while (client.connected() && !myServer.done)
     {
@@ -125,18 +118,10 @@ void loop ()
 
     }  // end of while client connected
 
-  client.print (F("<p>Free memory = "));
-  client.println (getFreeMemory ());
-
-  unsigned long timeTaken = millis () - startTime;
-  client.print (F("<hr>Time taken = "));
-  client.print (timeTaken);
-  client.println (F(" milliseconds.\n"));
-
   client.println(F("<hr>OK, done."));
 
-  client.println (F("</body>\n"));
-
+  client.println (F("</body>\n"
+                    "</html>"));
 
   // give the web browser time to receive the data
   delay(1);

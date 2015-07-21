@@ -24,8 +24,6 @@ EthernetServer server(80);
 // derive an instance of the HTTPserver class with custom handlers
 class myServerClass : public HTTPserver
   {
-  public:
-
   virtual void processPostType        (const char * key, const byte flags);
   virtual void processPathname        (const char * key, const byte flags);
   virtual void processHttpVersion     (const char * key, const byte flags);
@@ -33,8 +31,7 @@ class myServerClass : public HTTPserver
   virtual void processHeaderArgument  (const char * key, const char * value, const byte flags);
   virtual void processCookie          (const char * key, const char * value, const byte flags);
   virtual void processPostArgument    (const char * key, const char * value, const byte flags);
-
-  };  // end of myServClass
+  };  // end of myServerClass
 
 myServerClass myServer;
 
@@ -104,7 +101,6 @@ void setup ()
   {
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip, gateway, subnet);
-  server.begin();
   }  // end of setup
 
 void loop ()

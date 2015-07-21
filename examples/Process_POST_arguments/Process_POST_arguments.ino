@@ -5,7 +5,6 @@
 #include <SPI.h>
 #include <Ethernet.h>
 #include <HTTPserver.h>
-#include <memdebug.h>
 
 const int LOW_PIN = 3;
 const int HIGH_PIN = 5;
@@ -28,12 +27,9 @@ EthernetServer server(80);
 // derive an instance of the HTTPserver class with custom handlers
 class myServerClass : public HTTPserver
   {
-  public:
-
   virtual void processPostType        (const char * key, const byte flags);
   virtual void processPostArgument    (const char * key, const char * value, const byte flags);
-
-  };  // end of myServClass
+  };  // end of myServerClass
 
 myServerClass myServer;
 
@@ -73,7 +69,6 @@ void setup ()
   {
   // start the Ethernet connection and the server:
   Ethernet.begin(mac, ip, gateway, subnet);
-  server.begin();
 
   for (int i = LOW_PIN; i <= HIGH_PIN; i++)
     pinMode (i, OUTPUT);
@@ -89,8 +84,6 @@ void loop ()
     return;
     }
 
-  unsigned long startTime = millis ();
-
   // default LEDs to off
   for (int i = LOW_PIN; i <= HIGH_PIN; i++)
     digitalWrite (i, LOW);
@@ -105,7 +98,7 @@ void loop ()
 
     }  // end of while client connected
 
-
+  // send the form
   client.println (F("<p><form METHOD=\"post\" ACTION=\"/activate_leds\">"));
   for (int i = LOW_PIN; i <= HIGH_PIN; i++)
     {
@@ -114,25 +107,19 @@ void loop ()
     client.print (F(" <input type=checkbox name=\"led_"));
     client.print (i);
     client.print (F("\" value=1 "));
+    // check the box if the pin is high
     if (digitalRead (i) == HIGH)
       client.print (F("checked "));
     client.println (F(">"));
     }
+  // submit button
   client.println (F("<p><input Type=submit Name=Submit Value=\"Process\">"));
   client.println (F("</form>"));
 
-  client.print (F("<p>Free memory = "));
-  client.println (getFreeMemory ());
-
-  unsigned long timeTaken = millis () - startTime;
-  client.print (F("<hr>Time taken = "));
-  client.print (timeTaken);
-  client.println (F(" milliseconds.\n"));
-
   client.println(F("<hr>OK, done."));
 
-  client.println (F("</body>\n"));
-
+  client.println (F("</body>\n"
+                    "</html>"));
 
   // give the web browser time to receive the data
   delay(1);
