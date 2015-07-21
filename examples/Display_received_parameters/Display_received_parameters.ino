@@ -42,8 +42,10 @@ myServerClass myServer;
 void myServerClass::processPostType (const char * key, const byte flags)
   {
   println(F("HTTP/1.1 200 OK"));
-  println(F("Content-Type: text/plain"));
-  println();
+  println(F("Content-Type: text/plain\n"
+            "Connection: close\n"
+            "Server: HTTPserver/1.0.0 (Arduino)"));
+  println();  // end of headers
 
   print (F("GET/POST type: "));
   println (key);

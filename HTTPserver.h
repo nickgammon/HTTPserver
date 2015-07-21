@@ -75,7 +75,7 @@ class HTTPserver : public Print
   void newState (StateType what);
   // buffer handlers
   void addToKeyBuffer (const byte inByte);
-  void addToValueBuffer (byte inByte);
+  void addToValueBuffer (byte inByte, const bool percentEncoded);
   void clearBuffers ();
   // state handlers
   void handleNewline ();

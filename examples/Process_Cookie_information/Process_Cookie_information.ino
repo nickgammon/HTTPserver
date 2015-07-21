@@ -30,8 +30,9 @@ class myServerClass : public HTTPserver
 
   public:
 
-  char theirName [30];
-
+  static const int MAX_NAME_LENGTH = 30;
+  // put the cookie value here
+  char theirName [MAX_NAME_LENGTH + 1];  // allow for trailing 0x00
   };  // end of myServerClass
 
 myServerClass myServer;
@@ -44,7 +45,9 @@ myServerClass myServer;
 void myServerClass::processPostType (const char * key, const byte flags)
   {
   println(F("HTTP/1.1 200 OK"));
-  println(F("Content-Type: text/html"));
+  println(F("Content-Type: text/html\n"
+            "Connection: close\n"
+            "Server: HTTPserver/1.0.0 (Arduino)"));
   theirName [0] = 0;  // no name yet
   } // end of processPostType
 
@@ -54,8 +57,8 @@ void myServerClass::processCookie (const char * key, const char * value, const b
   // if we get a "name" cookie, save the name
   if (strcmp (key, "name") == 0)
     {
-    strncpy (theirName, value, sizeof (theirName) - 1);
-    theirName [sizeof (theirName) - 1] = 0;
+    strncpy (theirName, value, MAX_NAME_LENGTH);
+    theirName [MAX_NAME_LENGTH] = 0;
     }
   }  // end of processCookie
 
@@ -64,8 +67,8 @@ void myServerClass::processPostArgument (const char * key, const char * value, c
   // if they sent a form with a new name, set the cookie to it
   if (strcmp (key, "name") == 0)
     {
-    strncpy (theirName, value, sizeof (theirName) - 1);
-    theirName [sizeof (theirName) - 1] = 0;
+    strncpy (theirName, value, MAX_NAME_LENGTH);
+    theirName [MAX_NAME_LENGTH] = 0;
     setCookie ("name", value);
     }
   } // end of myServerClass::processPostArgument
@@ -117,11 +120,11 @@ void loop ()
 
   client.println (F("<p><form METHOD=\"post\" ACTION=\"/change_name\">"));
   client.print   (F("<p>Your name:&nbsp;<input type=text Name=\"name\" size="));
-  client.print   (sizeof myServer.theirName - 1);
+  client.print   (myServerClass::MAX_NAME_LENGTH);
   client.print   (F(" maxlength="));
-  client.print   (sizeof myServer.theirName - 1);
+  client.print   (myServerClass::MAX_NAME_LENGTH);
   client.print   (F(" value=\""));
-  client.print   (myServer.theirName);
+  myServer.fixHTML (myServer.theirName);
   client.println (F("\">"));
   client.println (F("<p><input Type=submit Name=Submit Value=\"Save\">"));
   client.println (F("</form>"));

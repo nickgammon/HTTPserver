@@ -4,9 +4,15 @@
 
  Copyright 2015 Nick Gammon.
 
- Version: 1.0
+ Version: 1.1
 
-   http://gammon.com.au/electronics
+   Change history
+   --------------
+   1.1 - Fixed header values to not be percent-encoded, fixed cookie issues.
+         Also various bugfixes.
+
+
+   http://www.gammon.com.au/forum/?id=12942
 
  PERMISSION TO DISTRIBUTE
 
@@ -40,8 +46,8 @@
 void HTTPserver::clearBuffers ()
   {
   keyBuffer [0]   = 0;
-  keyBufferPos    = 0;
   valueBuffer [0] = 0;
+  keyBufferPos    = 0;
   valueBufferPos  = 0;
   encodePhase     = ENCODE_NONE;
   flags           = FLAG_NONE;
@@ -70,9 +76,9 @@ void HTTPserver::addToKeyBuffer (const byte inByte)
   } // end of HTTPserver::addToKeyBuffer
 
 // ---------------------------------------------------------------------------
-// add a character to the value buffer - percent-encoded
+// add a character to the value buffer - percent-encoded (if wanted)
 // ---------------------------------------------------------------------------
- void HTTPserver::addToValueBuffer (byte inByte)
+ void HTTPserver::addToValueBuffer (byte inByte, const bool percentEncoded)
   {
   if (valueBufferPos >= MAX_VALUE_LENGTH)
     {
@@ -82,52 +88,55 @@ void HTTPserver::addToKeyBuffer (const byte inByte)
 
   // look for stuff like "foo+bar" (turn the "+" into a space)
   // and also "foo%21bar" (turn %21 into one character)
-  switch (encodePhase)
+  if (percentEncoded)
     {
+    switch (encodePhase)
+      {
 
-    // if in "normal" mode, turn a "+" into a space, and look for "%"
-    case ENCODE_NONE:
-      if (inByte == '+')
-        inByte = ' ';
-      else if (inByte == '%')
-        {
-        encodePhase = ENCODE_GOT_PERCENT;
-        return;  // no addition to buffer yet
-        }
-      break;
+      // if in "normal" mode, turn a "+" into a space, and look for "%"
+      case ENCODE_NONE:
+        if (inByte == '+')
+          inByte = ' ';
+        else if (inByte == '%')
+          {
+          encodePhase = ENCODE_GOT_PERCENT;
+          return;  // no addition to buffer yet
+          }
+        break;
 
-    // we had the "%" last time, this should be the first hex digit
-    case ENCODE_GOT_PERCENT:
-      if (isxdigit (inByte))
-        {
-        byte c = toupper (inByte) - '0';
-        if (c > 9)
-          c -= 7;  // Fix A-F
-        encodeByte = c << 4;
-        encodePhase = ENCODE_GOT_FIRST_CHAR;
-        return;  // no addition to buffer yet
-        }
-      // not a hex digit, give up
-      encodePhase = ENCODE_NONE;
-      flags |= FLAG_ENCODING_ERROR;
-      break;
-
-    // this should be the second hex digit
-    case ENCODE_GOT_FIRST_CHAR:
-      if (isxdigit (inByte))
-        {
-        byte c = toupper (inByte) - '0';
-        if (c > 9)
-          c -= 7;  // Fix A-F
-        inByte = encodeByte | c;
-        }
-      else
+      // we had the "%" last time, this should be the first hex digit
+      case ENCODE_GOT_PERCENT:
+        if (isxdigit (inByte))
+          {
+          byte c = toupper (inByte) - '0';
+          if (c > 9)
+            c -= 7;  // Fix A-F
+          encodeByte = c << 4;
+          encodePhase = ENCODE_GOT_FIRST_CHAR;
+          return;  // no addition to buffer yet
+          }
+        // not a hex digit, give up
+        encodePhase = ENCODE_NONE;
         flags |= FLAG_ENCODING_ERROR;
+        break;
 
-      // done with encoding it, or not a hex digit
-      encodePhase = ENCODE_NONE;
+      // this should be the second hex digit
+      case ENCODE_GOT_FIRST_CHAR:
+        if (isxdigit (inByte))
+          {
+          byte c = toupper (inByte) - '0';
+          if (c > 9)
+            c -= 7;  // Fix A-F
+          inByte = encodeByte | c;
+          }
+        else
+          flags |= FLAG_ENCODING_ERROR;
 
-    } // end of switch on encodePhase
+        // done with encoding it, or not a hex digit
+        encodePhase = ENCODE_NONE;
+
+      } // end of switch on encodePhase
+    } // end of percent-encoded
 
   // add to value buffer, encoding has been dealt with
   valueBuffer [valueBufferPos++] = inByte;
@@ -193,18 +202,13 @@ void HTTPserver::handleSpace ()
 
     // Accept-Encoding: gzip,{ }deflat
     case HEADER_VALUE:
-      addToValueBuffer (' ');
+    case COOKIE_VALUE:
+      addToValueBuffer (' ', false);
       break;
 
     // Accept-Encoding{ }:
     // space shouldn't be there, but we'll ignore it
     case HEADER_NAME:
-      break;
-
-    case COOKIE_VALUE:
-      processCookie (keyBuffer, valueBuffer, flags);
-      newState (SKIP_COOKIE_SPACES);
-      clearBuffers ();
       break;
 
     default:
@@ -261,6 +265,12 @@ void HTTPserver::handleNewline ()
       newState (START_LINE);
       break;
 
+    case COOKIE_VALUE:
+      processCookie (keyBuffer, valueBuffer, flags);
+      newState (START_LINE);
+      clearBuffers ();
+      break;
+
     } // end of switch on state
 
   } // end of HTTPserver::handleNewline
@@ -268,6 +278,8 @@ void HTTPserver::handleNewline ()
 // ---------------------------------------------------------------------------
 //  handleText - we have an incoming character other than a space or newline
 // ---------------------------------------------------------------------------
+
+// in the state machine handlers the symbols { } indicate where we think we are
 void HTTPserver::handleText (const byte inByte)
   {
   switch (state)
@@ -304,19 +316,21 @@ void HTTPserver::handleText (const byte inByte)
     // Connection: {k}eep-alive
     case SKIP_HEADER_SPACES:
       newState (HEADER_VALUE);
-      addToValueBuffer (inByte);
+      addToValueBuffer (inByte, false);
       break;
 
     // Connection: {keep-alive}
     case HEADER_VALUE:
-      addToValueBuffer (inByte);
+      addToValueBuffer (inByte, false);
       break;
 
+    // Cookie: foo=bar;{ }whatever=something;
     case SKIP_COOKIE_SPACES:
       newState (COOKIE_NAME);
       addToKeyBuffer (inByte);
       break;
 
+    // Cookie: {foo}=bar;
     case COOKIE_NAME:
       if (inByte == '=')
         newState (COOKIE_VALUE);
@@ -324,6 +338,7 @@ void HTTPserver::handleText (const byte inByte)
         addToKeyBuffer (inByte);
       break;
 
+    // Cookie: foo={bar};
     case COOKIE_VALUE:
       if (inByte == ';' || inByte == ',')
         {
@@ -332,7 +347,7 @@ void HTTPserver::handleText (const byte inByte)
         clearBuffers ();
         }
       else
-        addToValueBuffer (inByte);
+        addToValueBuffer (inByte, false);
       break;
 
     // {foo}=bar&answer=42
@@ -358,13 +373,13 @@ void HTTPserver::handleText (const byte inByte)
         clearBuffers ();
         }
       else
-        addToValueBuffer (inByte);
+        addToValueBuffer (inByte, true);
       break;
 
     // GET {/whatever/foo.htm} HTTP/1.1
     case SKIP_GET_SPACES_1:
       newState (GET_PATHNAME);
-      addToValueBuffer (inByte);
+      addToValueBuffer (inByte, true);
       break;
 
    // GET /pathname/filename?{foo}=bar&fubar=true
@@ -390,7 +405,7 @@ void HTTPserver::handleText (const byte inByte)
         clearBuffers ();
         }
       else
-        addToValueBuffer (inByte);
+        addToValueBuffer (inByte, true);
       break;
 
     // GET {/pathname/filename}?foo=bar&fubar=true
@@ -402,7 +417,7 @@ void HTTPserver::handleText (const byte inByte)
         clearBuffers ();
         }
       else
-        addToValueBuffer (inByte);
+        addToValueBuffer (inByte, true);
       break;
 
     // GET /whatever/foo.htm {HTTP/1.1}
@@ -438,13 +453,16 @@ void HTTPserver::processIncomingByte (const byte inByte)
     {
     case '\r':
       break;  // ignore carriage-return
+
     case ' ':
     case '\t':
       handleSpace ();    // generally switches states
       break;
+
     case '\n':
       handleNewline ();  // generally switches states
       break;
+
     default:
       handleText (inByte);     // collect text
       break;
@@ -511,6 +529,7 @@ void HTTPserver::fixHTML (const char * message)
       case '<': print ("&lt;"); break;
       case '>': print ("&gt;"); break;
       case '&': print ("&amp;"); break;
+      case '"': print ("&quot;"); break;
       default:  write (c); break;
       }  // end of switch
     } // end of while
@@ -553,9 +572,9 @@ void HTTPserver::setCookie (const char * name, const char * value, const char * 
     if (*p >= '!' && *p <= '~' && *p != ';' && *p != ';' && *p != '=')
       write (*p);
   write ('=');
-  // send the value which excludes spaces, ';', ','
+  // send the value which excludes ';' or ','
   for (const char * p = value; *p; p++)
-    if (*p >= '!' && *p <= '~' && *p != ';' && *p != ';')
+    if (*p >= ' ' && *p <= '~' && *p != ';' && *p != ';')
       write (*p);
   // terminate value with semicolon and space
   print (F("; "));
