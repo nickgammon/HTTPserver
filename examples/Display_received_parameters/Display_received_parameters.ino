@@ -124,7 +124,7 @@ void loop ()
 
     }  // end of while client connected
 
-  client.println("OK, done.");
+  client.println(F("OK, done."));
 
   // give the web browser time to receive the data
   delay(1);

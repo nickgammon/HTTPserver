@@ -430,6 +430,10 @@ void HTTPserver::handleText (const byte inByte)
 void HTTPserver::processIncomingByte (const byte inByte)
   {
 
+  // count received bytes in POST section
+  if (state == POST_NAME || state == POST_VALUE)
+    receivedLength++;
+
   switch (inByte)
     {
     case '\r':
@@ -449,8 +453,6 @@ void HTTPserver::processIncomingByte (const byte inByte)
  // see if count of content bytes is up
   if (state == POST_NAME || state == POST_VALUE)
     {
-    // count received bytes in POST section
-    receivedLength++;
     // if all received, stop now
     if (receivedLength >= contentLength)
       {
@@ -497,12 +499,12 @@ size_t HTTPserver::write (uint8_t c)
   } // end of HTTPserver::write
 
 // ---------------------------------------------------------------------------
-//  printHTML - convert special characters such as < > and &
+//  fixHTML - convert special characters such as < > and &
 // ---------------------------------------------------------------------------
-void HTTPserver::printHTML (const char * message)
+void HTTPserver::fixHTML (const char * message)
   {
   char c;
-  while (c = *message++)
+  while ((c = *message++))
     {
     switch (c)
       {
@@ -512,4 +514,58 @@ void HTTPserver::printHTML (const char * message)
       default:  write (c); break;
       }  // end of switch
     } // end of while
-  } // end of HTTPserver::printHTML
+  } // end of HTTPserver::fixHTML
+
+// ---------------------------------------------------------------------------
+//  urlEncode - convert special characters such as spaces into percent-encoded
+// ---------------------------------------------------------------------------
+void HTTPserver::urlEncode (const char * message)
+  {
+  char c;
+  while ((c = *message++))
+    {
+    if (!isalpha (c) && !isdigit(c))
+      {
+      // compact conversion to hex
+      write ('%');
+      char x = ((c >> 4) & 0xF) | '0';
+      if (x > '9')
+        x += 7;
+      write (x);
+      x = (c & 0xF) | '0';
+      if (x > '9')
+        x += 7;
+      write (x);
+      }
+    else
+      write (c);
+    } // end of while
+  } // end of HTTPserver::urlEncode
+
+// ---------------------------------------------------------------------------
+//  setCookie - cookies only permit certain characters
+// ---------------------------------------------------------------------------
+void HTTPserver::setCookie (const char * name, const char * value, const char * extra)
+  {
+  print (F("Set-Cookie: "));
+  // send the name which excludes spaces, ';', ',' or '='
+  for (const char * p = name; *p; p++)
+    if (*p >= '!' && *p <= '~' && *p != ';' && *p != ';' && *p != '=')
+      write (*p);
+  write ('=');
+  // send the value which excludes spaces, ';', ','
+  for (const char * p = value; *p; p++)
+    if (*p >= '!' && *p <= '~' && *p != ';' && *p != ';')
+      write (*p);
+  // terminate value with semicolon and space
+  print (F("; "));
+
+  // extra stuff like:
+  //  Path=/accounts; Expires=Wed, 13 Jan 2021 22:23:01 GMT; Secure; HttpOnly
+  if (extra)
+    print (extra);
+  // end of header line
+  println ();
+
+  } // end of HTTPserver::setCookie
+

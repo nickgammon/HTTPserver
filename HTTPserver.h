@@ -1,12 +1,15 @@
 // HTTPserver class
 class HTTPserver : public Print
   {
-
+  // derived classes can know these lengths
+  protected:
   static const size_t MAX_KEY_LENGTH = 40;  // maximum size for a key
+  static const size_t MAX_VALUE_LENGTH = 100;  // maximum size for a value
+
+  private:
   char keyBuffer [MAX_KEY_LENGTH + 1];      // store here
   size_t keyBufferPos;                      // how much data we have collected
 
-  static const size_t MAX_VALUE_LENGTH = 100;  // maximum size for a value
   char valueBuffer [MAX_VALUE_LENGTH + 1];     // store here
   size_t valueBufferPos;                       // how much data we have collected
 
@@ -44,17 +47,24 @@ class HTTPserver : public Print
   EncodePhaseType encodePhase;
   byte encodeByte;  // encoded byte being assembled (first nybble)
 
-  // extra information about the key/value passed to a callback function
-  // (bitmask - more than one might be set)
-  enum  {
-    FLAG_NONE                   = 0x00,    // no problems
-    FLAG_KEY_BUFFER_OVERFLOW    = 0x01,    // the key was truncated
-    FLAG_VALUE_BUFFER_OVERFLOW  = 0x02,    // the value was truncated
-    FLAG_ENCODING_ERROR         = 0x04,    // %xx encoding error
-  };
+  // derived classes can inspect the flags and check if it was a POST
+  protected:
+
+    // extra information about the key/value passed to a callback function
+    // (bitmask - more than one might be set)
+    enum  {
+      FLAG_NONE                   = 0x00,    // no problems
+      FLAG_KEY_BUFFER_OVERFLOW    = 0x01,    // the key was truncated
+      FLAG_VALUE_BUFFER_OVERFLOW  = 0x02,    // the value was truncated
+      FLAG_ENCODING_ERROR         = 0x04,    // %xx encoding error
+    };
+
+    bool postRequest; // true if a POST type
+
+  private:
+
   byte flags;  // see above enum
 
-  bool postRequest; // true if a POST type
   unsigned long contentLength;   // how long the POST data is
   unsigned long receivedLength;  // how much POST data we currently have
   Print * output;  // where to write output to
@@ -83,6 +93,11 @@ class HTTPserver : public Print
     // handle one incoming byte from the client
     void processIncomingByte (const byte inByte);
 
+   // set to stop further processing (eg. on error)
+    bool done;
+
+  protected:
+
     // user handlers - override to do something with them
     virtual void processPostType        (const char * key, const byte flags) { }
     virtual void processPathname        (const char * key, const byte flags) { }
@@ -94,10 +109,14 @@ class HTTPserver : public Print
 
     // for outputting back to client
   	size_t write(uint8_t c);
-    void printHTML (const char * message);
 
-    // set to stop further processing (eg. on error)
-    bool done;
+    public:
+    // fix up <, >, & into &lt; &gt; and &amp;
+    void fixHTML (const char * message);
+    // fix up non alphanumeric into %-encoding
+    void urlEncode (const char * message);
+    // output a Set-Cookie header line
+    void setCookie (const char * name, const char * value, const char * extra = NULL);
 
     using Print::write;
   };  // end of HTTPserver
