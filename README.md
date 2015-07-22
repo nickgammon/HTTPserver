@@ -73,12 +73,12 @@ In the begin() call we pass down the address of the Ethernet client, so that the
 
 Now while the client remains connected, call *processIncomingByte* for each byte read from the web client, this will be processed by the state machine, and the appropriate callback routine (which you supplied earlier) will be called when required. The state machine sets the *done* flag when it determines that there should be no more incoming data.
 
-  while (client.connected() && !myServer.done)
-    {
-    while (client.available () > 0 && !myServer.done)
-      myServer.processIncomingByte (client.read ());
+    while (client.connected() && !myServer.done)
+      {
+      while (client.available () > 0 && !myServer.done)
+        myServer.processIncomingByte (client.read ());
 
-    // do other stuff here
+      // do other stuff here
 
-    }  // end of while client connected
+      }  // end of while client connected
 
