@@ -4,12 +4,13 @@
 
  Copyright 2015 Nick Gammon.
 
- Version: 1.1
+ Version: 1.2
 
    Change history
    --------------
    1.1 - Fixed header values to not be percent-encoded, fixed cookie issues.
          Also various bugfixes.
+   1.2 - Added buffering of writes.
 
 
    http://www.gammon.com.au/forum/?id=12942
@@ -500,6 +501,7 @@ void HTTPserver::begin (Print * output_)
   postRequest = false;
   contentLength = 0;
   receivedLength = 0;
+  sendBufferPos = 0;
   output = output_;
   clearBuffers ();
   done = false;
@@ -510,11 +512,32 @@ void HTTPserver::begin (Print * output_)
 // ---------------------------------------------------------------------------
 size_t HTTPserver::write (uint8_t c)
   {
-  if (output)
-    return output->write (c);
+  // forget it, if they supplied no output device
+  if (!output)
+    return 0;
 
-  return 0;
+  // only buffer writes up, if a non-zero buffer length
+  if (SEND_BUFFER_LENGTH > 0)
+    {
+    sendBuffer [sendBufferPos++] = c;
+    // if full, flush it
+    if (sendBufferPos >= SEND_BUFFER_LENGTH)
+      flush ();
+    }
+  else
+    output->write (c);  // otherwise write a byte at a time
+
+  return 1;
   } // end of HTTPserver::write
+
+void HTTPserver::flush ()
+  {
+  if (sendBufferPos > 0)
+    {
+    output->write (sendBuffer, sendBufferPos);
+    sendBufferPos = 0;
+    } // end of anything in buffer
+  } // end of HTTPserver::flush
 
 // ---------------------------------------------------------------------------
 //  fixHTML - convert special characters such as < > and &

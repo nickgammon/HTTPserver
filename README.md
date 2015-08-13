@@ -82,3 +82,25 @@ Now while the client remains connected, call *processIncomingByte* for each byte
 
       }  // end of while client connected
 
+---
+
+## Output buffering
+
+Version 1.2 of this library now buffers output. This considerably speeds up writes done with the F() macro, eg.
+
+    void myServerClass::processCookie (const char * key, const char * value, const byte flags)
+      {
+      print (F("Cookie: "));
+      print (key);
+      print (F(" = "));
+      println (value);
+      }  // end of processCookie
+
+Previously each byte in those strings would be sent in a separate packet, now they are placed into a 64-byte buffer, and sent when the buffer fills up. When you are done sending you need to flush the final bytes like this:
+
+      myServer.flush ();
+
+This buffering is only done if you write **via the derived class**, not directly to the client. For example:
+
+      myServer.println(F("<html>"));
+      myServer.println(F("<body>"));

@@ -5,6 +5,7 @@ class HTTPserver : public Print
   protected:
   static const size_t MAX_KEY_LENGTH = 40;     // maximum size for a key
   static const size_t MAX_VALUE_LENGTH = 100;  // maximum size for a value
+  static const size_t SEND_BUFFER_LENGTH = 64; // how much to buffer sends
 
   private:
   char keyBuffer [MAX_KEY_LENGTH + 1];      // store here
@@ -12,6 +13,9 @@ class HTTPserver : public Print
 
   char valueBuffer [MAX_VALUE_LENGTH + 1];     // store here
   size_t valueBufferPos;                       // how much data we have collected
+
+  char sendBuffer [SEND_BUFFER_LENGTH];     // for buffering output
+  size_t sendBufferPos;                     // how much in buffer
 
   // state machine: possible states
   enum StateType {
@@ -92,6 +96,9 @@ class HTTPserver : public Print
 
     // handle one incoming byte from the client
     void processIncomingByte (const byte inByte);
+
+    // empty sending buffer
+    void flush ();  // for emptying send buffer
 
    // set to stop further processing (eg. on error)
     bool done;
