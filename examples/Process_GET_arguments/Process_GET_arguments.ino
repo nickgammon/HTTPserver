@@ -120,10 +120,12 @@ void loop ()
 
     }  // end of while client connected
 
-  client.println(F("<hr>OK, done."));
+  myServer.println(F("<hr>OK, done."));
 
-  client.println (F("</body>\n"
-                    "</html>"));
+  myServer.println (F("</body>\n"
+                      "</html>"));
+
+  myServer.flush ();
 
   // give the web browser time to receive the data
   delay(1);

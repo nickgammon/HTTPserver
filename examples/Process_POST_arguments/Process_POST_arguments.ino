@@ -101,27 +101,29 @@ void loop ()
     }  // end of while client connected
 
   // send the form
-  client.println (F("<p><form METHOD=\"post\" ACTION=\"/activate_leds\">"));
+  myServer.println (F("<p><form METHOD=\"post\" ACTION=\"/activate_leds\">"));
   for (int i = LOW_PIN; i <= HIGH_PIN; i++)
     {
-    client.print (F("<br>LED: "));
-    client.print (i);
-    client.print (F(" <input type=checkbox name=\"led_"));
-    client.print (i);
-    client.print (F("\" value=1 "));
+    myServer.print (F("<br>LED: "));
+    myServer.print (i);
+    myServer.print (F(" <input type=checkbox name=\"led_"));
+    myServer.print (i);
+    myServer.print (F("\" value=1 "));
     // check the box if the pin is high
     if (digitalRead (i) == HIGH)
-      client.print (F("checked "));
-    client.println (F(">"));
+      myServer.print (F("checked "));
+    myServer.println (F(">"));
     }
   // submit button
-  client.println (F("<p><input Type=submit Name=Submit Value=\"Process\">"));
-  client.println (F("</form>"));
+  myServer.println (F("<p><input Type=submit Name=Submit Value=\"Process\">"));
+  myServer.println (F("</form>"));
 
-  client.println(F("<hr>OK, done."));
+  myServer.println(F("<hr>OK, done."));
 
-  client.println (F("</body>\n"
-                    "</html>"));
+  myServer.println (F("</body>\n"
+                      "</html>"));
+
+  myServer.flush ();
 
   // give the web browser time to receive the data
   delay(1);

@@ -105,35 +105,36 @@ void loop ()
     }  // end of while client connected
 
   // end of headers
-  client.println();
+  myServer.println();
   // start HTML stuff
-  client.println (F("<!DOCTYPE html>\n"
+  myServer.println (F("<!DOCTYPE html>\n"
              "<html>\n"
              "<head>\n"
              "<title>Arduino test</title>\n"
              "</head>\n"
              "<body>\n"));
 
-  client.print (F("<p>Your name is registered as: "));
+  myServer.print (F("<p>Your name is registered as: "));
   myServer.fixHTML (myServer.theirName);
-  client.println ();
+  myServer.println ();
 
-  client.println (F("<p><form METHOD=\"post\" ACTION=\"/change_name\">"));
-  client.print   (F("<p>Your name:&nbsp;<input type=text Name=\"name\" size="));
-  client.print   (myServerClass::MAX_NAME_LENGTH);
-  client.print   (F(" maxlength="));
-  client.print   (myServerClass::MAX_NAME_LENGTH);
-  client.print   (F(" value=\""));
+  myServer.println (F("<p><form METHOD=\"post\" ACTION=\"/change_name\">"));
+  myServer.print   (F("<p>Your name:&nbsp;<input type=text Name=\"name\" size="));
+  myServer.print   (myServerClass::MAX_NAME_LENGTH);
+  myServer.print   (F(" maxlength="));
+  myServer.print   (myServerClass::MAX_NAME_LENGTH);
+  myServer.print   (F(" value=\""));
   myServer.fixHTML (myServer.theirName);
-  client.println (F("\">"));
-  client.println (F("<p><input Type=submit Name=Submit Value=\"Save\">"));
-  client.println (F("</form>"));
+  myServer.println (F("\">"));
+  myServer.println (F("<p><input Type=submit Name=Submit Value=\"Save\">"));
+  myServer.println (F("</form>"));
 
-  client.println(F("<hr>OK, done."));
+  myServer.println(F("<hr>OK, done."));
 
-  client.println (F("</body>\n"
+  myServer.println (F("</body>\n"
                     "</html>"));
 
+  myServer.flush ();
 
   // give the web browser time to receive the data
   delay(1);
