@@ -4,13 +4,14 @@
 
  Copyright 2015 Nick Gammon.
 
- Version: 1.2
+ Version: 1.3
 
    Change history
    --------------
    1.1 - Fixed header values to not be percent-encoded, fixed cookie issues.
          Also various bugfixes.
    1.2 - Added buffering of writes.
+   1.3 - Removed trailing space from header and cookie values
 
 
    http://www.gammon.com.au/forum/?id=12942
@@ -226,7 +227,10 @@ void HTTPserver::handleNewline ()
   {
 
   // pretend there was a trailing space and wrap up the previous line
-  if (state != SKIP_TO_END_OF_LINE && state != SKIP_INITIAL_LINES)
+  if (state != SKIP_TO_END_OF_LINE &&
+      state != SKIP_INITIAL_LINES &&
+      state != HEADER_VALUE &&  // don't have trailing space on header value
+      state != COOKIE_VALUE)    // nor on cookie value
     handleSpace ();
 
   switch (state)
