@@ -51,6 +51,7 @@ void HTTPserver::clearBuffers ()
   valueBuffer [0] = 0;
   keyBufferPos    = 0;
   valueBufferPos  = 0;
+  bodyBufferPos   = 0;
   encodePhase     = ENCODE_NONE;
   flags           = FLAG_NONE;
   } // end of HTTPserver::clearBuffers
@@ -144,6 +145,20 @@ void HTTPserver::addToKeyBuffer (const byte inByte)
   valueBuffer [valueBufferPos++] = inByte;
   valueBuffer [valueBufferPos] = 0;  // trailing null-terminator
   } // end of HTTPserver::addToValueBuffer
+
+// ---------------------------------------------------------------------------
+// add a character to the body buffer - raw binary
+// ---------------------------------------------------------------------------
+void HTTPserver::addToBodyBuffer (const byte inByte)
+  {
+  if (bodyBufferPos >= BODY_CHUNK_LENGTH)
+    {
+      // pass current chunk to the application and empty it
+      processBodyChunk (bodyBuffer, bodyBufferPos, flags);
+      bodyBufferPos = 0;
+    }  // end of overflow
+    bodyBuffer [bodyBufferPos++] = inByte;
+  } // end of HTTPserver::addToBodyBuffer
 
 // ---------------------------------------------------------------------------
 //  handleSpace - we have an incoming space
@@ -245,10 +260,10 @@ void HTTPserver::handleNewline ()
     case SKIP_INITIAL_LINES:
       break;
 
-    // a blank line on its own signals switching to the POST key/values
+    // a blank line on its own signals switching to the POST key/values or binary body
     case START_LINE:
       clearBuffers ();
-      newState (POST_NAME);
+      newState (octetStream ? BODY : POST_NAME);
       break;
 
     // wrap up this POST key/value and start a new one
@@ -266,6 +281,8 @@ void HTTPserver::handleNewline ()
       // remember the content length for the POST data
       if (strcasecmp (keyBuffer, "Content-Length") == 0)
         contentLength = atol (valueBuffer);
+      if (strcasecmp (keyBuffer, "Content-Type") == 0 && strcasecmp (valueBuffer, "application/octet-stream") == 0)
+        octetStream = true;
       clearBuffers ();
       newState (START_LINE);
       break;
@@ -450,10 +467,27 @@ void HTTPserver::handleText (const byte inByte)
 void HTTPserver::processIncomingByte (const byte inByte)
   {
 
-  // count received bytes in POST section
-  if (state == POST_NAME || state == POST_VALUE)
+  // count received bytes in POST section or binary body
+  if (state == POST_NAME || state == POST_VALUE || state == BODY)
     receivedLength++;
 
+  if (state == BODY)
+    {
+    addToBodyBuffer (inByte);
+        
+    // if all received, stop now
+    if (receivedLength >= contentLength)
+      {
+      // wrap up last partial binary chunk (always at least 1 byte here by definition)
+      processBodyChunk (bodyBuffer, bodyBufferPos, flags);
+      clearBuffers ();
+      done = true;
+      }
+        
+    // don't process data specially inside a binary body
+    return;
+    }
+  
   switch (inByte)
     {
     case '\r':
@@ -503,6 +537,7 @@ void HTTPserver::begin (Print * output_)
   encodePhase = ENCODE_NONE;
   flags = FLAG_NONE;
   postRequest = false;
+  octetStream = false;
   contentLength = 0;
   receivedLength = 0;
   sendBufferPos = 0;
