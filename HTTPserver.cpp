@@ -263,7 +263,7 @@ void HTTPserver::handleNewline ()
     // a blank line on its own signals switching to the POST key/values or binary body
     case START_LINE:
       clearBuffers ();
-      newState (octetStream ? BODY : POST_NAME);
+      newState (binaryBody ? BODY : POST_NAME);
       break;
 
     // wrap up this POST key/value and start a new one
@@ -282,7 +282,7 @@ void HTTPserver::handleNewline ()
       if (strcasecmp (keyBuffer, "Content-Length") == 0)
         contentLength = atol (valueBuffer);
       if (strcasecmp (keyBuffer, "Content-Type") == 0 && strcasecmp (valueBuffer, "application/octet-stream") == 0)
-        octetStream = true;
+        binaryBody = true;
       clearBuffers ();
       newState (START_LINE);
       break;
@@ -537,7 +537,7 @@ void HTTPserver::begin (Print * output_)
   encodePhase = ENCODE_NONE;
   flags = FLAG_NONE;
   postRequest = false;
-  octetStream = false;
+  binaryBody = false;
   contentLength = 0;
   receivedLength = 0;
   sendBufferPos = 0;

@@ -69,7 +69,6 @@ class HTTPserver : public Print
     };
 
     bool postRequest; // true if a POST type
-    bool octetStream; // true if "Content-Type" header is "application/octet-stream"
 
   private:
 
@@ -111,8 +110,11 @@ class HTTPserver : public Print
     unsigned long getContentLength () { return contentLength; }
     unsigned long getReceivedLength () { return receivedLength; }
 
-   // set to stop further processing (eg. on error)
+    // set to stop further processing (eg. on error)
     bool done;
+
+    // true if "Content-Type" header is "application/octet-stream" OR application can set for other relevant type(s)
+    bool binaryBody;
 
   protected:
 
