@@ -5,6 +5,7 @@ class HTTPserver : public Print
   protected:
   static const size_t MAX_KEY_LENGTH = 40;     // maximum size for a key
   static const size_t MAX_VALUE_LENGTH = 100;  // maximum size for a value
+  static const size_t BODY_CHUNK_LENGTH = 16;  // maximum size for a binary body chunk
   static const size_t SEND_BUFFER_LENGTH = 64; // how much to buffer sends
 
   private:
@@ -14,6 +15,9 @@ class HTTPserver : public Print
   char valueBuffer [MAX_VALUE_LENGTH + 1];     // store here
   size_t valueBufferPos;                       // how much data we have collected
 
+  byte bodyBuffer [BODY_CHUNK_LENGTH];      // store here
+  size_t bodyBufferPos;                     // how much data we have collected
+  
   char sendBuffer [SEND_BUFFER_LENGTH];     // for buffering output
   size_t sendBufferPos;                     // how much in buffer
 
@@ -37,6 +41,7 @@ class HTTPserver : public Print
     COOKIE_VALUE,       // eg. light
     POST_NAME,          // eg. action
     POST_VALUE,         // eg. add
+    BODY,               // eg. octet-stream binary blob
   };
   // current state
   StateType state;
@@ -80,6 +85,7 @@ class HTTPserver : public Print
   // buffer handlers
   void addToKeyBuffer (const byte inByte);
   void addToValueBuffer (byte inByte, const bool percentEncoded);
+  void addToBodyBuffer (const byte inByte);
   void clearBuffers ();
   // state handlers
   void handleNewline ();
@@ -99,9 +105,16 @@ class HTTPserver : public Print
 
     // empty sending buffer
     void flush ();  // for emptying send buffer
+    
+    // give application read access to expected/current content length
+    unsigned long getContentLength () { return contentLength; }
+    unsigned long getReceivedLength () { return receivedLength; }
 
-   // set to stop further processing (eg. on error)
+    // set to stop further processing (eg. on error)
     bool done;
+
+    // true if "Content-Type" header is "application/octet-stream" OR application can set for other relevant type(s)
+    bool binaryBody;
 
   protected:
 
@@ -113,6 +126,7 @@ class HTTPserver : public Print
     virtual void processHeaderArgument  (const char * key, const char * value, const byte flags) { }
     virtual void processCookie          (const char * key, const char * value, const byte flags) { }
     virtual void processPostArgument    (const char * key, const char * value, const byte flags) { }
+    virtual void processBodyChunk       (const byte * data, const size_t length, const byte flags) { }
 
     // for outputting back to client
   	size_t write(uint8_t c);
